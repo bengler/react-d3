@@ -43,18 +43,14 @@ module.exports = React.createClass({
     if (!Array.isArray(props.data)) {
       props.data = [props.data];
     }
-
     var yScale = d3.scale.linear()
       .range([innerHeight, 0]);
 
     var xValues = [];
     var yValues = [];
-    var seriesNames = [];
-    props.data.forEach( (series) => {
-      seriesNames.push(series.name);
-      series.values.forEach((val, idx) => {
+    props.data.forEach( function(series)  {
+      series.values.forEach(function(val, idx)  {
         xValues.push(props.xAccessor(val));
-        yValues.push(props.yAccessor(val));
       });
     });
 
@@ -66,20 +62,32 @@ module.exports = React.createClass({
       xScale = d3.scale.linear()
         .range([0, innerWidth]);
     }
-
     xScale.domain(d3.extent(xValues));
-    yScale.domain(d3.extent(yValues));
-
-    props.colors.domain(seriesNames);
 
     var stack = d3.layout.stack()
       .x(props.xAccessor)
       .y(props.yAccessor)
-      .offset('expand')
       .order('reverse')
-      .values((d)=> { return d.values; });
+      .values(function(d) { return d.values; });
 
     var layers = stack(props.data);
+
+    var seriesNames = [];
+    layers.forEach(function(layer) {
+      seriesNames.push(layer.name);
+    });
+
+    props.colors.domain(seriesNames);
+
+    var ySummed = [];
+    layers[0].values.forEach(function(value, idx) {
+      var sum = 0;
+      var sum = layers.reduce(function(a,b) {
+        return a += b.values[idx].y;
+      }, 0);
+      ySummed.push(sum);
+    });
+    yScale.domain([0,d3.max(ySummed)]);
 
     var trans = `translate(${ props.margins.left },${ props.margins.top })`;
 
@@ -94,7 +102,7 @@ module.exports = React.createClass({
             yScale={yScale}
             data={d.values}
             xAccessor={props.xAccessor}
-            yAccessor={props.yAccessor}
+            yAccessor={(d) => d.y}
           />
         );
       });
